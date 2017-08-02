@@ -1,6 +1,6 @@
 (ns register-service.leadership
   (:require [clojure.test :refer :all]
-            [register-service.leadership :as store]
+            [register-service.leadership :as leadership]
             [zookeeper :as zk]
             [bookkeeper.mini-cluster :as mc]
             [clj-async-test.core :refer :all]))
@@ -25,9 +25,9 @@
           data1 "data1"
           data2 "data2"
           data3 "data3"
-          lease1 (store/join-group client1 data1)
-          lease2 (store/join-group client2 data2)
-          lease3 (store/join-group client3 data3)]
+          lease1 (leadership/join-group client1 data1)
+          lease2 (leadership/join-group client2 data2)
+          lease3 (leadership/join-group client3 data3)]
       (is (eventually (= {:node (:node lease1) :data data1}
                          @(:current-leader lease1))))
       (is (eventually (= {:node (:node lease1) :data data1}
@@ -35,12 +35,12 @@
       (is (eventually (= {:node (:node lease1) :data data1}
                          @(:current-leader lease3))))
 
-      (store/leave-group client1 lease1)
+      (leadership/leave-group client1 lease1)
       (is (eventually (= {:node (:node lease2) :data data2}
                          @(:current-leader lease2))))
       (is (eventually (= {:node (:node lease2) :data data2}
                          @(:current-leader lease3))))
 
-      (store/leave-group client2 lease2)
+      (leadership/leave-group client2 lease2)
       (is (eventually (= {:node (:node lease3) :data data3}
                          @(:current-leader lease3)))))))

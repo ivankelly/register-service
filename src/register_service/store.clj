@@ -12,7 +12,10 @@
   (let [register (atom 0)]
     (reify Store
       (check-and-set! [this expected new promise]
-        (deliver promise (compare-and-set! register expected new)))
+        (deliver promise (let [cur @register]
+                           (if (= cur expected)
+                             (compare-and-set! register cur new)
+                             false))))
       (get-value [this promise]
         (deliver promise @register))
       (close! [this]))))

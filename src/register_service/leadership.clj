@@ -35,9 +35,11 @@
   (zk/delete client (str election-znode "/" (:node lease))))
 
 (defn am-leader? [lease]
-  nil)
+  (and lease
+       (= (:node @(:current-leader lease)) (:node lease))))
 
 (defn leader-data [lease]
-  (:data @(:current-leader lease)))
+  (if lease
+    (:data @(:current-leader lease))))
 
-
+(def always-leader {:node "foobar" :current-leader (atom {:node "foobar"})})

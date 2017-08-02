@@ -5,6 +5,7 @@
             [register-service.app :refer [local-ip]]
             [register-service.client :as client]
             [register-service.handler :refer :all]
+            [register-service.leadership :as lead]
             [register-service.store :as st]))
 
 (def ^:dynamic *jetty-port* nil)
@@ -12,7 +13,8 @@
 (defn jetty-fixture
   [f]
   (let [store-chan (st/init-store)
-        server (run-jetty (create-handler store-chan)
+        leader lead/always-leader
+        server (run-jetty (create-handler store-chan (atom leader))
                           {:port 0 :join? false})]
     (binding [*jetty-port* (.getLocalPort (nth (.getConnectors server) 0))]
       (f))))
