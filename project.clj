@@ -9,10 +9,12 @@
                  [ring/ring-defaults "0.2.1"]
                  [ring/ring-json "0.4.0"]
                  [cheshire "5.7.1"]
+                 [failjure "1.0.1"]
                  [org.clojure/tools.cli "0.3.5"]
                  [zookeeper-clj "0.9.4"]
                  [bookkeeper-clj "0.1.0"]
-                 [clj-async-test "0.0.5"]]
+                 [clj-async-test "0.0.5"]
+                 [clj-http "3.6.1"]]
   :plugins [[lein-ring "0.9.7"]]
   :main register-service.app
   :ring {:handler register-service.handler/app}

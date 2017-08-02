@@ -6,9 +6,8 @@
 (deftest test-store
   (testing "check-and-set and get"
     (let [store (store/init-store)]
-      (is (= (:value (deref (store/get-value store) 1000 -1)) 0))
-      (is (= (:value (deref (store/check-and-set! store 0 100) 1000 -1)) 100))
-      (is (= (:result (deref (store/check-and-set! store 0 100) 1000 :timeout))
-             :error))
-      (is (= (:value (deref (store/check-and-set! store 100 200) 1000 -1)) 200))
+      (is (= @(store/get-value store) 0))
+      (is (= @(store/check-and-set! store 0 100) true))
+      (is (= @(store/check-and-set! store 0 200) false))
+      (is (= @(store/check-and-set! store 100 200) true))
       (store/shutdown! store))))

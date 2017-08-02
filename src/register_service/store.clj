@@ -1,5 +1,6 @@
 (ns register-service.store
-  (:require [clojure.core.async :as async :refer [go-loop <! >!! chan]]))
+  (:require [clojure.core.async :as async :refer [go-loop <! >!! chan]]
+            [failjure.core :as f]))
 
 (defprotocol Store
   (check-and-set! [this expected new promise])
@@ -11,11 +12,9 @@
   (let [register (atom 0)]
     (reify Store
       (check-and-set! [this expected new promise]
-        (if (compare-and-set! register expected new)
-          (deliver promise {:result :ok :value new})
-          (deliver promise {:result :error})))
+        (deliver promise (compare-and-set! register expected new)))
       (get-value [this promise]
-        (deliver promise {:result :ok :value @register}))
+        (deliver promise @register))
       (close! [this]))))
 
 (defn- handle-cmd
@@ -29,7 +28,7 @@
     :shutdown (close! store)
     (let [promise (:promise promise)]
       (if promise
-        (deliver promise {:result :error}))
+        (deliver promise (f/fail :unknown-cmd)))
       (println "Unknown cmd" cmd)))
   (:action cmd))
 
