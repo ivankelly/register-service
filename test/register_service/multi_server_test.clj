@@ -30,7 +30,8 @@
                           {:port 0 :join? false})
         http-port (.getLocalPort (nth (.getConnectors server) 0))
         url (resource-url (local-ip) http-port)
-        lease (leadership/join-group zk url)]
+        lease (leadership/join-group zk url
+                                     (fn [] (st/become-leader store-chan)))]
     (swap! lease-atom (fn [x] lease))
     {:http-port http-port
      :url url

@@ -8,7 +8,7 @@
 (defn node-from-path [path]
   (.substring path (inc (count election-znode))))
 
-(defn elect-leader [client me current-leader]
+(defn elect-leader [client me current-leader on-leadership]
   (let [watcher (fn [{:keys [event-type path]}]
                   (elect-leader client me current-leader))
         members (util/sort-sequential-nodes
@@ -19,17 +19,23 @@
                                         (str election-znode "/" leader))))
                (catch KeeperException$NoNodeException e :data-error))]
     (if (= data :data-error)
-      (recur client me current-leader)
-      (swap! current-leader (fn [x] {:node leader :data data})))))
+      (recur client me current-leader on-leadership)
+      (do
+        (if (= leader me)
+          (on-leadership))
+        (swap! current-leader (fn [x] {:node leader :data data}))))))
 
-(defn join-group [client data]
-  (let [current-leader (atom nil)
-        me (node-from-path (zk/create-all client (str election-znode "/n-")
-                                          :sequential? true
-                                          :data (.getBytes data)))]
-    (elect-leader client me current-leader)
-    {:node me
-     :current-leader current-leader}))
+(defn join-group
+  ([client data]
+   (join-group client data (fn [])))
+  ([client data on-leadership]
+   (let [current-leader (atom nil)
+         me (node-from-path (zk/create-all client (str election-znode "/n-")
+                                           :sequential? true
+                                           :data (.getBytes data)))]
+     (elect-leader client me current-leader on-leadership)
+     {:node me
+      :current-leader current-leader})))
 
 (defn leave-group [client lease]
   (zk/delete client (str election-znode "/" (:node lease))))
