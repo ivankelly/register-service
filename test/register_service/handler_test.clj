@@ -16,6 +16,7 @@
         leader lead/always-leader
         server (run-jetty (create-handler store-chan (atom leader))
                           {:port 0 :join? false})]
+    (st/become-leader store-chan)
     (binding [*jetty-port* (.getLocalPort (nth (.getConnectors server) 0))]
       (f))))
 

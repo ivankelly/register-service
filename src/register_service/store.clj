@@ -20,30 +20,44 @@
         (deliver promise @register))
       (close! [this]))))
 
-(defn- handle-cmd
-  [store cmd]
+(defn- leading-state
+  [store]
+  (fn [cmd]
+    (case (:action cmd)
+      :check-and-set (do
+                       (check-and-set! store
+                                       (:expected cmd)
+                                       (:new cmd)
+                                       (:promise cmd))
+                       (leading-state store))
+      :get (do
+             (get-value store (:promise cmd))
+             (leading-state store))
+      :shutdown (do
+                  (close! store)
+                  nil))))
+
+(defn- initial-state
+  [cmd]
   (case (:action cmd)
-    :check-and-set (check-and-set! store
-                                   (:expected cmd)
-                                   (:new cmd)
-                                   (:promise cmd))
-    :get (get-value store (:promise cmd))
-    :shutdown (close! store)
-    (let [promise (:promise promise)]
-      (if promise
-        (deliver promise (f/fail :unknown-cmd)))
-      (println "Unknown cmd" cmd)))
-  (:action cmd))
+    :become-leader (let [store (in-mem-store)]
+                     (leading-state store))))
 
 (defn init-store
   "Initialize the store, returning a channel."
   []
-  (let [c (chan)
-        store (in-mem-store)]
-    (go-loop [cmd (<! c)]
-      (if-not (or (nil? cmd) (= (handle-cmd store cmd) :shutdown))
-        (recur (<! c))))
+  (let [c (chan)]
+    (go-loop [cmd (<! c)
+              current-state initial-state]
+      (let [next-state (current-state cmd)]
+        (if next-state
+          (recur (<! c) next-state))))
     c))
+
+(defn become-leader
+  "Your the leader now, dog"
+  [chan]
+  (>!! chan {:action :become-leader}))
 
 (defn check-and-set!
   [chan expected new]

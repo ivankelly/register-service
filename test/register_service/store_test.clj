@@ -6,6 +6,7 @@
 (deftest test-store
   (testing "check-and-set and get"
     (let [store (store/init-store)]
+      (store/become-leader store)
       (is (= @(store/get-value store) 0))
       (is (= @(store/check-and-set! store 0 100) true))
       (is (= @(store/check-and-set! store 0 200) false))
