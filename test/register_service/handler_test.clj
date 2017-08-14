@@ -12,11 +12,11 @@
 
 (defn jetty-fixture
   [f]
-  (let [store-chan (st/init-store)
+  (let [store (st/init-mem-store 0)
         leader lead/always-leader
-        server (run-jetty (create-handler store-chan (atom leader))
+        server (run-jetty (create-handler store (atom leader))
                           {:port 0 :join? false})]
-    (st/become-leader store-chan)
+    @(st/become-leader! store)
     (binding [*jetty-port* (.getLocalPort (nth (.getConnectors server) 0))]
       (f))))
 

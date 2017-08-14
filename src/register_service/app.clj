@@ -4,6 +4,7 @@
             [register-service.store :as st]
             [clojure.core.async :refer [>!!]]
             [clojure.tools.cli :refer [parse-opts]]
+            [bookkeeper.client :as bk]
             [zookeeper :as zk])
   (:import [java.net DatagramSocket InetAddress])
   (:gen-class))
@@ -30,8 +31,10 @@
 (defn -main
   [& args]
   (let [opts (parse-opts args cli-options)
-        store-chan (st/init-store)
-        zk (zk/connect (get-in opts [:options :zookeeper])
-                       :watcher shutdown-watcher)]
-    (run-jetty (create-handler store-chan)
+        connect-string (get-in opts [:options :zookeeper])
+        zk (zk/connect connect-string
+                       :watcher shutdown-watcher)
+        bk (bk/bookkeeper {:zookeeper/connect connect-string})
+        store (st/init-persistent-store zk bk)]
+    (run-jetty (create-handler store)
                {:port (get-in opts [:options :port])})))
