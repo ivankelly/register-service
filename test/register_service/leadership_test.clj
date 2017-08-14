@@ -44,3 +44,30 @@
       (leadership/leave-group client2 lease2)
       (is (eventually (= {:node (:node lease3) :data data3}
                          @(:current-leader lease3)))))))
+
+(deftest test-leader-callback
+  (testing "Callback only called once"
+    (let [data (map #(str "data" %) (range 0 10))
+          atoms (map (fn [x] (atom 0)) data)
+          cbs (map (fn [a] (fn [] (swap! a inc))) atoms)
+          clients (map (fn [x] (zk/connect *zkconnect*)) atoms)
+          leases (map (fn [c d cb]
+                        (leadership/join-group c d cb))
+                      clients data cbs)]
+      (is (eventually (leadership/am-leader? (first leases))))
+      (is (= @(first atoms) 1))
+      (is (= (reduce + (map deref atoms)) 1))
+      (leadership/leave-group (second clients) (second leases))
+      (is (= @(first atoms) 1))
+      (is (= (reduce + (map deref atoms)) 1))
+      (leadership/leave-group (first clients) (first leases))
+      (is (eventually (leadership/am-leader? (nth leases 2))))
+      (is (= @(first atoms) 1))
+      (is (= @(nth atoms 2) 1))
+      (is (= (reduce + (map deref atoms)) 2))
+      (leadership/leave-group (last clients) (last leases))
+      (is (= @(first atoms) 1))
+      (is (= @(nth atoms 2) 1))
+      (is (= (reduce + (map deref atoms)) 2))
+      (map #(.close %) clients))))
+

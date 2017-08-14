@@ -10,7 +10,7 @@
 
 (defn elect-leader [client me current-leader on-leadership]
   (let [watcher (fn [{:keys [event-type path]}]
-                  (elect-leader client me current-leader))
+                  (elect-leader client me current-leader on-leadership))
         members (util/sort-sequential-nodes
                  (zk/children client election-znode :watcher watcher))
         leader (first members)
@@ -21,7 +21,7 @@
     (if (= data :data-error)
       (recur client me current-leader on-leadership)
       (do
-        (if (= leader me)
+        (if (and (not (= (:node @current-leader) leader)) (= leader me))
           (on-leadership))
         (swap! current-leader (fn [x] {:node leader :data data}))))))
 
