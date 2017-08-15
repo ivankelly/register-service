@@ -6,6 +6,7 @@
             [register-service.handler :refer [create-handler, resource-url]]
             [register-service.leadership :as leadership]
             [register-service.store :as st]
+            [register-service.util :as util]
             [register-service.app :refer [local-ip]]
             [clojure.core.async :refer [>!!]]
             [bookkeeper.client :as bk]
@@ -13,16 +14,7 @@
             [clj-async-test.core :refer :all]
             [zookeeper :as zk]))
 
-(def ^:dynamic *zkconnect* nil)
 (def ^:dynamic *servers* [])
-
-(defn bk-fixture
-  [f]
-  (let [cluster (mc/create 3)]
-    (mc/start cluster)
-    (binding [*zkconnect* (mc/zookeeper-connect-string cluster)]
-      (f))
-    (mc/kill cluster)))
 
 (defn hangable-store [zk bk]
   (let [should-hang? (atom false)
@@ -39,8 +31,8 @@
     [should-hang? store]))
 
 (defn register-server [zk-connect]
-  (let [zk (zk/connect *zkconnect*)
-        bk (bk/bookkeeper {:zookeeper/connect *zkconnect*})
+  (let [zk (zk/connect zk-connect)
+        bk (bk/bookkeeper {:zookeeper/connect zk-connect})
         [should-hang? store] (hangable-store zk bk)
         lease-atom (atom nil)
         server (run-jetty (create-handler store lease-atom)
@@ -60,13 +52,13 @@
 
 (defn multi-server-fixture
   [f]
-  (binding [*servers* (map (fn [i] (register-server *zkconnect*)) [1 2 3])]
+  (binding [*servers* (map (fn [i] (register-server util/*zkconnect*)) [1 2 3])]
     (f)
     (map (fn [s]
            (.close (:zk s))
            (.close (:bk s))) *servers*)))
 
-(use-fixtures :each bk-fixture multi-server-fixture)
+(use-fixtures :each util/bk-fixture multi-server-fixture)
 
 (deftest test-update-leader
   (testing "Update to leader can be read from non-leader"

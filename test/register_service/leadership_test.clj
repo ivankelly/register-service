@@ -1,27 +1,18 @@
 (ns register-service.leadership
   (:require [clojure.test :refer :all]
             [register-service.leadership :as leadership]
+            [register-service.util :as util]
             [zookeeper :as zk]
             [bookkeeper.mini-cluster :as mc]
             [clj-async-test.core :refer :all]))
 
-(def ^:dynamic *zkconnect* nil)
-
-(defn bk-fixture
-  [f]
-  (let [cluster (mc/create 0)] ; 0 bookies, we only want zk
-    (mc/start cluster)
-    (binding [*zkconnect* (mc/zookeeper-connect-string cluster)]
-      (f))
-    (mc/kill cluster)))
-
-(use-fixtures :each bk-fixture)
+(use-fixtures :each util/bk-fixture)
 
 (deftest test-leadership
   (testing "Leadership failover works"
-    (let [client1 (zk/connect *zkconnect*)
-          client2 (zk/connect *zkconnect*)
-          client3 (zk/connect *zkconnect*)
+    (let [client1 (zk/connect util/*zkconnect*)
+          client2 (zk/connect util/*zkconnect*)
+          client3 (zk/connect util/*zkconnect*)
           data1 "data1"
           data2 "data2"
           data3 "data3"
@@ -50,7 +41,7 @@
     (let [data (map #(str "data" %) (range 0 10))
           atoms (map (fn [x] (atom 0)) data)
           cbs (map (fn [a] (fn [] (swap! a inc))) atoms)
-          clients (map (fn [x] (zk/connect *zkconnect*)) atoms)
+          clients (map (fn [x] (zk/connect util/*zkconnect*)) atoms)
           leases (map (fn [c d cb]
                         (leadership/join-group c d cb))
                       clients data cbs)]
