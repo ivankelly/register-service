@@ -35,6 +35,9 @@
         zk (zk/connect connect-string
                        :watcher shutdown-watcher)
         bk (bk/bookkeeper {:zookeeper/connect connect-string})
-        store (st/init-persistent-store zk bk)]
+        error-handler (fn [e]
+                        (println "Error in store, quitting. " e)
+                        (System/exit 2))
+        store (st/init-persistent-store zk bk error-handler)]
     (run-jetty (create-handler store)
                {:port (get-in opts [:options :port])})))

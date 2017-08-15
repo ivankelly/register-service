@@ -1,6 +1,7 @@
 (ns register-service.store-test
   (:require [clojure.test :refer :all]
             [clojure.core.async :as async :refer [close!]]
+            [clj-async-test.core :refer :all]
             [register-service.store :as store]
             [register-service.util :as util]
             [bookkeeper.client :as bk]
@@ -63,3 +64,28 @@
         (is (= value test-value)))
       (let [[ledger,value] @(store/new-ledger zk bk)]
         (is (= value test-value))))))
+
+(deftest test-fatal-error-before-leadership
+  (testing "Fatal error occurs before the store can become leader"
+    (let [zk (zk/connect util/*zkconnect*)
+          bk (bk/bookkeeper {:zookeeper/connect util/*zkconnect*})
+          triggered (atom false)
+          handler (fn [e] (swap! triggered (fn [x] true)))
+          store (store/init-persistent-store zk bk handler)]
+      (util/kill-bookies)
+      (store/become-leader! store)
+      (is (eventually @triggered)))))
+
+(deftest test-fatal-error-as-leader
+  (testing "Fatal error occurs when store is leader"
+    (let [zk (zk/connect util/*zkconnect*)
+          bk (bk/bookkeeper {:zookeeper/connect util/*zkconnect*})
+          triggered (atom false)
+          handler (fn [e] (swap! triggered (fn [x] true)))
+          store (store/init-persistent-store zk bk handler)]
+      @(store/become-leader! store)
+      (is (= @(store/check-and-set! store 0 1) true))
+      (util/kill-bookies)
+      (is (not @triggered))
+      (store/check-and-set! store 1 2)
+      (is (eventually @triggered)))))

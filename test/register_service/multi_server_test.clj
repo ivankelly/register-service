@@ -18,7 +18,7 @@
 
 (defn hangable-store [zk bk]
   (let [should-hang? (atom false)
-        backend (st/init-persistent-store zk bk)
+        backend (st/init-persistent-store zk bk (fn [e] (println "Got error " e)))
         store (reify st/Store
                 (become-leader! [this]
                   (st/become-leader! backend))

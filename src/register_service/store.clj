@@ -101,7 +101,7 @@
      [ledger, last-update])))
 
 (defn- leading-state
-  [ledger register-value]
+  [ledger register-value fatal-error-handler]
   (fn [cmd]
     (case (:action cmd)
       :check-and-set (let [deferred (:deferred cmd)
@@ -111,39 +111,40 @@
                          (try
                            @(write-update ledger new)
                            (d/success! deferred true)
-                           (leading-state ledger new)
+                           (leading-state ledger new fatal-error-handler)
                            (catch Exception e
-                             (d/error! deferred e)
-                             (leading-state ledger register-value)))
+                             (fatal-error-handler e)))
                          (do
                            (d/success! deferred false)
-                           (leading-state ledger register-value))))
+                           (leading-state ledger register-value
+                                          fatal-error-handler))))
       :get (do
              (d/success! (:deferred cmd) register-value)
-             (leading-state ledger register-value))
+             (leading-state ledger register-value
+                            fatal-error-handler))
       :shutdown (do
                   ;(close! store)
                   nil))))
 
 (defn- initial-state
-  [zk bk]
+  [zk bk fatal-error-handler]
   (fn [cmd]
     (case (:action cmd)
       :become-leader (let [deferred (:deferred cmd)]
                        (try
                          (let [[ledger,last-update] @(new-ledger zk bk)]
                            (d/success! deferred last-update)
-                           (leading-state ledger last-update))
+                           (leading-state ledger last-update
+                                          fatal-error-handler))
                          (catch Exception e
-                           (d/error! deferred e)
-                           (initial-state zk bk)))))))
+                           (fatal-error-handler e)))))))
 
 (defn init-persistent-store
   "Initialize the store, returning a channel."
-  [zk bk]
+  [zk bk fatal-error-handler]
   (let [chan (chan)]
     (go-loop [cmd (<! chan)
-              current-state (initial-state zk bk)]
+              current-state (initial-state zk bk fatal-error-handler)]
       (let [next-state (current-state cmd)]
         (if next-state
           (recur (<! chan) next-state))))
