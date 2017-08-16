@@ -50,14 +50,15 @@
 
 (use-fixtures :each error-fixture)
 
-(deftest test-get-and-set
-  (testing "Get and set operations"
+(deftest test-get-and-set-errors
+  (testing "Get and set operation errors"
     (let [url (resource-url (local-ip) *jetty-port*)]
-      (let [response (client/get-value url)]
+      (let [response (client/get-value url 0)]
         (is (f/failed? response)))
       (let [response (client/check-and-set! url 0 100)]
         (is (f/failed? response)))
       (let [response (client/check-and-set! url trigger-timeout-value 100)]
         (is (f/failed? response)))
-      (let [response (client/get-value url)]
+      (let [response (client/get-value url 0)]
         (is (f/failed? response))))))
+

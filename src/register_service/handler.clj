@@ -35,7 +35,7 @@
            timeout-ms (f/fail :timeout))
     (let [remote-url (lead/leader-data @lease-atom)]
       (if remote-url
-        (client/get-value remote-url)
+        (client/get-value remote-url 0) ; client will handle if too old
         (f/fail :no-leader)))))
 
 (defn- create-routes

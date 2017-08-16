@@ -7,11 +7,15 @@
                        :socket-timeout 5000
                        :conn-timeout 5000})
 
-(defn get-value [url]
+(defn get-value [url expected-seqno]
   "Get the value of the register from a remote server"
   (f/attempt-all [response (f/try* (clj-http/get url request-defaults))]
                  (if (= (:status response) 200)
-                   (:body response)
+                   (let [result (:body response)
+                         seqno (:seq result)]
+                     (if (> expected-seqno seqno)
+                       (f/fail "Server returned an old result")
+                       result))
                    (f/fail (:body response)))))
 
 (defn check-and-set! [url seqno value]

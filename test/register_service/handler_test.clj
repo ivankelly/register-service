@@ -6,7 +6,8 @@
             [register-service.client :as client]
             [register-service.handler :refer :all]
             [register-service.leadership :as lead]
-            [register-service.store :as st]))
+            [register-service.store :as st]
+            [failjure.core :as f]))
 
 (def ^:dynamic *jetty-port* nil)
 
@@ -25,9 +26,19 @@
 (deftest test-get-and-set
   (testing "Get and set operations"
     (let [url (resource-url (local-ip) *jetty-port*)]
-      (let [response (client/get-value url)]
+      (let [response (client/get-value url 0)]
         (is (= response {:seq 0 :value 0})))
       (let [response (client/check-and-set! url 0 100)]
         (is response))
       (let [response (client/check-and-set! url 0 100)]
         (is (not response))))))
+
+(deftest test-get-newer-seq
+  (testing "Get value with a sequence higher than exists on the server"
+    (let [url (resource-url (local-ip) *jetty-port*)]
+      (let [response (client/get-value url 0)]
+        (is (= response {:seq 0 :value 0})))
+      (let [response (client/get-value url 10)]
+        (is (f/failed? response)))
+      (let [response (client/get-value url 0)]
+        (is (= response {:seq 0 :value 0}))))))
