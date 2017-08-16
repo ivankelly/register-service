@@ -11,13 +11,13 @@
   "Get the value of the register from a remote server"
   (f/attempt-all [response (f/try* (clj-http/get url request-defaults))]
                  (if (= (:status response) 200)
-                   (get-in response [:body :value])
+                   (:body response)
                    (f/fail (:body response)))))
 
-(defn check-and-set! [url expected new]
+(defn check-and-set! [url seqno value]
   "Check and set the value of a register on a remote server"
   (f/attempt-all [params (merge request-defaults
-                                {:form-params {:expected expected :new new}
+                                {:form-params {:seq seqno :value value}
                                  :content-type :json})
                   response (f/try* (clj-http/post url params))]
                  (if (= (:status response) 200)

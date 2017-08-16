@@ -27,8 +27,8 @@
   (let [should-timeout (atom false)]
     (routes
      (POST "/register" request
-           (let [expected (long (get-in request [:body :expected]))]
-             (if (= expected trigger-timeout-value)
+           (let [seqno (long (get-in request [:body :seq]))]
+             (if (= seqno trigger-timeout-value)
                (swap! should-timeout (fn [x] true))))
            (timeout-or-error @should-timeout))
      (GET "/register" []

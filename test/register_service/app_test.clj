@@ -27,9 +27,9 @@
           server2 (server-thread port2 util/*zkconnect*)]
       (.start server1)
       (.start server2)
-      (is (eventually (= (client/get-value url1) 0)))
+      (is (eventually (= (:value (client/get-value url1)) 0)))
       (is (client/check-and-set! url1 0 10))
-      (is (= (client/get-value url2) 10))
+      (is (= (:value (client/get-value url2)) 10))
       (.interrupt server1)
       (.interrupt server2)
       (.join server1)

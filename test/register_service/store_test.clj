@@ -15,19 +15,19 @@
           store (store/init-persistent-store zk bk
                                              (fn [e] (println "Got error " e)))]
       @(store/become-leader! store)
-      (is (= @(store/get-value store) 0))
+      (is (= @(store/get-value store) {:seq 0 :value 0}))
       (is (= @(store/check-and-set! store 0 100) true))
       (is (= @(store/check-and-set! store 0 200) false))
-      (is (= @(store/check-and-set! store 100 200) true))
+      (is (= @(store/check-and-set! store 1 200) true))
       (store/close! store))))
 
 (deftest test-store-read-write
   (testing "Reading and writing entries to a ledger"
     (let [bk (util/bk-client)
           ledger @(bk/create-ledger bk)
-          last-value 0xdeadbeef]
-      (store/write-update ledger 123)
-      (store/write-update ledger 234)
+          last-value {:seq 123 :value 0xdeadbeef}]
+      (store/write-update ledger {:seq 120 :value 123})
+      (store/write-update ledger {:seq 121 :value 234})
       (let [last-entry-id @(store/write-update ledger last-value)]
         (is (= @(store/read-update ledger last-entry-id) last-value))))))
 
@@ -49,11 +49,11 @@
   (testing "Acquiring a new ledger in the log"
     (let [zk (util/zk-client)
           bk (util/bk-client)
-          test-value 0xcafebeef]
+          test-value {:seq 1 :value 0xcafebeef}]
       (let [[ledger,value] @(store/new-ledger zk bk)]
-        (is (= value 0)))
+        (is (= value store/register-initial-value)))
       (let [[ledger,value] @(store/new-ledger zk bk)]
-        (is (= value 0))
+        (is (= value store/register-initial-value))
         @(store/write-update ledger test-value))
       (let [[ledger,value] @(store/new-ledger zk bk)]
         (is (= value test-value)))

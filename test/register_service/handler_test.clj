@@ -12,7 +12,7 @@
 
 (defn jetty-fixture
   [f]
-  (let [store (st/init-mem-store 0)
+  (let [store (st/init-mem-store {:seq 0 :value 0})
         leader lead/always-leader
         server (run-jetty (create-handler store (atom leader))
                           {:port 0 :join? false})]
@@ -26,7 +26,7 @@
   (testing "Get and set operations"
     (let [url (resource-url (local-ip) *jetty-port*)]
       (let [response (client/get-value url)]
-        (is (= response 0)))
+        (is (= response {:seq 0 :value 0})))
       (let [response (client/check-and-set! url 0 100)]
         (is response))
       (let [response (client/check-and-set! url 0 100)]

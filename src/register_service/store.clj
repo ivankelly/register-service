@@ -8,7 +8,7 @@
 
 (defprotocol Store
   (become-leader! [this])
-  (check-and-set! [this expected new])
+  (check-and-set! [this seqno value])
   (get-value [this])
   (close! [this]))
 
@@ -18,24 +18,26 @@
     (reify Store
       (become-leader! [this]
         (d/success-deferred initial-value))
-      (check-and-set! [this expected new]
+      (check-and-set! [this seqno value]
         (d/success-deferred
-         (let [cur @register]
-           (if (= cur expected)
-             (compare-and-set! register cur new)
+         (let [cur @register
+               cur-seqno (:seq cur)]
+           (if (= cur-seqno seqno)
+             (compare-and-set! register cur {:seq (inc cur-seqno)
+                                             :value value})
              false))))
       (get-value [this]
         (d/success-deferred @register))
       (close! [this]))))
 
 (def register-znode "/registerdata")
-(def register-initial-value 0)
-
+(def register-initial-value {:seq 0 :value 0})
 
 (defn write-update
   [ledger value]
   (bk/add-entry ledger
-                (.getBytes (cheshire/generate-string {"register-value" value}))))
+                (.getBytes (cheshire/generate-string [(:seq value)
+                                                      (:value value)]))))
 
 (defn read-update
   [ledger entry-id]
@@ -43,8 +45,9 @@
            (fn [entries]
              (let [data (second (first entries))]
                (cheshire/parse-string (String. data))))
-           (fn [map]
-             (get map "register-value"))))
+           (fn [values]
+             {:seq (first values)
+              :value (second values)})))
 
 (defn read-ledger-list
   [zk]
@@ -105,13 +108,15 @@
   (fn [cmd]
     (case (:action cmd)
       :check-and-set (let [deferred (:deferred cmd)
-                           expected (:expected cmd)
-                           new (:new cmd)]
-                       (if (= register-value expected)
+                           cur-seqno (:seq register-value)
+                           seqno (:seq cmd)
+                           update {:seq (inc cur-seqno)
+                                   :value (:value cmd)}]
+                       (if (= cur-seqno seqno)
                          (try
-                           @(write-update ledger new)
+                           @(write-update ledger update)
                            (d/success! deferred true)
-                           (leading-state ledger new fatal-error-handler)
+                           (leading-state ledger update fatal-error-handler)
                            (catch Exception e
                              (fatal-error-handler e)))
                          (do
@@ -154,11 +159,11 @@
         (let [deferred (d/deferred)]
           (>!! chan {:action :become-leader :deferred deferred})
           deferred))
-      (check-and-set! [this expected new]
+      (check-and-set! [this seqno value]
         (let [deferred (d/deferred)]
           (>!! chan {:action :check-and-set
-                     :expected expected
-                     :new new
+                     :seq seqno
+                     :value value
                      :deferred deferred})
           deferred))
       (get-value [this]

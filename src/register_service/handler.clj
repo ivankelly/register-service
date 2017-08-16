@@ -18,14 +18,14 @@
 (def timeout-ms 5000)
 
 (defn- remote-or-local-cas!
-  [chan lease-atom expected new]
+  [chan lease-atom seqno value]
   (if (lead/am-leader? @lease-atom)
     (do
-      (deref (store/check-and-set! chan expected new)
+      (deref (store/check-and-set! chan seqno value)
              timeout-ms (f/fail :timeout)))
     (let [remote-url (lead/leader-data @lease-atom)]
       (if remote-url
-        (client/check-and-set! remote-url expected new)
+        (client/check-and-set! remote-url seqno value)
         (f/fail :no-leader)))))
 
 (defn- remote-or-local-get
@@ -42,9 +42,9 @@
   [chan lease-atom]
   (routes
    (POST "/register" request
-         (let [expected (get-in request [:body :expected])
-               new (get-in request [:body :new])
-               result (remote-or-local-cas! chan lease-atom expected new)]
+         (let [seqno (get-in request [:body :seq])
+               value (get-in request [:body :value])
+               result (remote-or-local-cas! chan lease-atom seqno value)]
            (if (f/failed? result)
              (status (response (str "Failed with: " (f/message result))) 503)
              (response {:updated result}))))
@@ -52,7 +52,7 @@
         (let [result (remote-or-local-get chan lease-atom)]
           (if (f/failed? result)
             (status (response (str "Failed with: " (f/message result))) 503)
-            (response {:value result}))))
+            (response result))))
    (route/not-found "Not Found")))
 
 (defn create-handler
