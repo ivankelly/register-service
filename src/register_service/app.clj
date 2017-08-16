@@ -1,6 +1,7 @@
 (ns register-service.app
   (:require [ring.adapter.jetty :refer [run-jetty]]
-            [register-service.handler :refer [create-handler]]
+            [register-service.handler :refer [create-handler resource-url]]
+            [register-service.leadership :as leadership]
             [register-service.store :as st]
             [clojure.core.async :refer [>!!]]
             [clojure.tools.cli :refer [parse-opts]]
@@ -22,14 +23,15 @@
     (.connect socket (InetAddress/getByName "8.8.8.8") 0)
     (.getHostAddress (.getLocalAddress socket))))
 
-(defn- shutdown-watcher [{:keys [keeper-state]}]
-  (if (= keeper-state :Expired)
-    (do
-      (println "Zookeeper session lost, shutting down")
-      (System/exit 1))))
+(defn- shutdown-watcher [exit-fn]
+  (fn [{:keys [keeper-state]}]
+    (if (= keeper-state :Expired)
+      (do
+        (println "Zookeeper session lost, shutting down")
+        (exit-fn 1)))))
 
-(defn -main
-  [& args]
+(defn app-main
+  [exit-fn & args]
   (let [opts (parse-opts args cli-options)
         connect-string (get-in opts [:options :zookeeper])
         zk (zk/connect connect-string
@@ -37,7 +39,23 @@
         bk (bk/bookkeeper {:zookeeper/connect connect-string})
         error-handler (fn [e]
                         (println "Error in store, quitting. " e)
-                        (System/exit 2))
-        store (st/init-persistent-store zk bk error-handler)]
-    (run-jetty (create-handler store)
-               {:port (get-in opts [:options :port])})))
+                        (exit-fn 2))
+        store (st/init-persistent-store zk bk error-handler)
+        port (get-in opts [:options :port])
+        url (resource-url (local-ip) port)
+        lease (leadership/join-group zk url
+                                     (fn [] (st/become-leader! store))
+                                     (fn []
+                                       (println "Lost leadership, quitting")
+                                       (exit-fn 4)))]
+    (try
+      (run-jetty (create-handler store (atom lease))
+                 {:port port})
+      (catch Exception e
+        (println "Caught exception " e)
+        (exit-fn 3)))))
+
+(defn -main
+  [& args]
+  (app-main (fn [code]
+              (System/exit code)) args))
