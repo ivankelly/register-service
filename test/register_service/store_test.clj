@@ -1,21 +1,17 @@
 (ns register-service.store-test
   (:require [clojure.test :refer :all]
-            [clojure.core.async :as async :refer [close!]]
             [clj-async-test.core :refer :all]
             [register-service.store :as store]
             [register-service.util :as util]
-            [bookkeeper.client :as bk]
-            [bookkeeper.mini-cluster :as mc]
-            [failjure.core :as f]
-            [zookeeper :as zk])
+            [bookkeeper.client :as bk])
   (:import [org.apache.zookeeper KeeperException]))
 
 (use-fixtures :each util/bk-fixture)
 
 (deftest test-store
   (testing "check-and-set and get"
-    (let [zk (zk/connect util/*zkconnect*)
-          bk (bk/bookkeeper {:zookeeper/connect util/*zkconnect*})
+    (let [zk (util/zk-client)
+          bk (util/bk-client)
           store (store/init-persistent-store zk bk
                                              (fn [e] (println "Got error " e)))]
       @(store/become-leader! store)
@@ -27,7 +23,7 @@
 
 (deftest test-store-read-write
   (testing "Reading and writing entries to a ledger"
-    (let [bk (bk/bookkeeper {:zookeeper/connect util/*zkconnect*})
+    (let [bk (util/bk-client)
           ledger @(bk/create-ledger bk)
           last-value 0xdeadbeef]
       (store/write-update ledger 123)
@@ -37,10 +33,9 @@
 
 (deftest test-read-write-list
   (testing "Reading and writing a list of entries to zookeeper"
-    (let [zk (zk/connect util/*zkconnect*)
+    (let [zk (util/zk-client)
           to-write '(1 2 3)]
       (let [[version,ledgers] @(store/read-ledger-list zk)]
-        (println version)
         (is (= ledgers '())))
       (is (thrown? KeeperException @(store/write-ledger-list zk '(1 2 3) 3)))
       (is @(store/write-ledger-list zk to-write nil))
@@ -52,8 +47,8 @@
 
 (deftest test-acquire-log
   (testing "Acquiring a new ledger in the log"
-    (let [zk (zk/connect util/*zkconnect*)
-          bk (bk/bookkeeper {:zookeeper/connect util/*zkconnect*})
+    (let [zk (util/zk-client)
+          bk (util/bk-client)
           test-value 0xcafebeef]
       (let [[ledger,value] @(store/new-ledger zk bk)]
         (is (= value 0)))
@@ -67,8 +62,8 @@
 
 (deftest test-fatal-error-before-leadership
   (testing "Fatal error occurs before the store can become leader"
-    (let [zk (zk/connect util/*zkconnect*)
-          bk (bk/bookkeeper {:zookeeper/connect util/*zkconnect*})
+    (let [zk (util/zk-client)
+          bk (util/bk-client)
           triggered (atom false)
           handler (fn [e] (swap! triggered (fn [x] true)))
           store (store/init-persistent-store zk bk handler)]
@@ -78,8 +73,8 @@
 
 (deftest test-fatal-error-as-leader
   (testing "Fatal error occurs when store is leader"
-    (let [zk (zk/connect util/*zkconnect*)
-          bk (bk/bookkeeper {:zookeeper/connect util/*zkconnect*})
+    (let [zk (util/zk-client)
+          bk (util/bk-client)
           triggered (atom false)
           handler (fn [e] (swap! triggered (fn [x] true)))
           store (store/init-persistent-store zk bk handler)]

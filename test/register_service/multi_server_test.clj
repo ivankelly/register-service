@@ -9,10 +9,7 @@
             [register-service.util :as util]
             [register-service.app :refer [local-ip]]
             [clojure.core.async :refer [>!!]]
-            [bookkeeper.client :as bk]
-            [bookkeeper.mini-cluster :as mc]
-            [clj-async-test.core :refer :all]
-            [zookeeper :as zk]))
+            [clj-async-test.core :refer :all]))
 
 (def ^:dynamic *servers* [])
 
@@ -30,9 +27,9 @@
                   (st/close! backend)))]
     [should-hang? store]))
 
-(defn register-server [zk-connect]
-  (let [zk (zk/connect zk-connect)
-        bk (bk/bookkeeper {:zookeeper/connect zk-connect})
+(defn register-server []
+  (let [zk (util/zk-client)
+        bk (util/bk-client)
         [should-hang? store] (hangable-store zk bk)
         lease-atom (atom nil)
         server (run-jetty (create-handler store lease-atom)
@@ -52,7 +49,7 @@
 
 (defn multi-server-fixture
   [f]
-  (binding [*servers* (map (fn [i] (register-server util/*zkconnect*)) [1 2 3])]
+  (binding [*servers* (map (fn [i] (register-server)) [1 2 3])]
     (f)
     (map (fn [s]
            (.close (:zk s))
