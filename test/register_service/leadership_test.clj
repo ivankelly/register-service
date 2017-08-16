@@ -1,4 +1,4 @@
-(ns register-service.leadership
+(ns register-service.leadership-test
   (:require [clojure.test :refer :all]
             [register-service.leadership :as leadership]
             [register-service.util :as util]
@@ -41,7 +41,7 @@
           cbs (map (fn [a] (fn [] (swap! a inc))) atoms)
           clients (map (fn [x] (util/zk-client)) atoms)
           leases (map (fn [c d cb]
-                        (leadership/join-group c d cb))
+                        (leadership/join-group c d cb (fn [])))
                       clients data cbs)]
       (is (eventually (leadership/am-leader? (first leases))))
       (is (= @(first atoms) 1))
@@ -59,3 +59,22 @@
       (is (= @(nth atoms 2) 1))
       (is (= (reduce + (map deref atoms)) 2)))))
 
+
+(deftest test-leadership-loss-callback
+  (testing "Leadership failover works"
+    (let [client1 (util/zk-client)
+          client2 (util/zk-client)
+          atom1 (atom 0)
+          atom2 (atom 0)
+          cb1 (fn [] (swap! atom1 inc))
+          cb2 (fn [] (swap! atom2 inc))
+          lease1 (leadership/join-group client1 ""
+                                        (fn []) cb1)
+          lease2 (leadership/join-group client2 ""
+                                        (fn []) cb2)]
+      (is (eventually (leadership/am-leader? lease1)))
+      (is (and (= @atom1 0) (= @atom2 0)))
+      (leadership/leave-group client1 lease1)
+      (is (eventually (leadership/am-leader? lease2)))
+      (is (eventually (= @atom1 1)))
+      (is (= @atom2 0)))))

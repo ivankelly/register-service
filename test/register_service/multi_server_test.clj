@@ -37,7 +37,8 @@
         http-port (.getLocalPort (nth (.getConnectors server) 0))
         url (resource-url (local-ip) http-port)
         lease (leadership/join-group zk url
-                                     (fn [] (st/become-leader! store)))]
+                                     (fn [] (st/become-leader! store))
+                                     (fn [] (println "leadership lost")))]
     (swap! lease-atom (fn [x] lease))
     {:http-port http-port
      :url url
