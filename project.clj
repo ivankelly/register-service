@@ -1,6 +1,6 @@
-(defproject register-service "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
+(defproject register-service "0.1.0"
+  :description "A simple service that exposes a single register backed by bookkeeper"
+  :url "http://github.com/ivankelly/register-service"
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/core.async "0.3.443"]
