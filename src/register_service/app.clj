@@ -31,7 +31,7 @@
         (exit-fn 1)))))
 
 (defn app-main
-  [exit-fn & args]
+  [exit-fn args]
   (let [opts (parse-opts args cli-options)
         connect-string (get-in opts [:options :zookeeper])
         zk (zk/connect connect-string

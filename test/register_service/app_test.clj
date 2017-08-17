@@ -14,8 +14,8 @@
   (Thread. (fn []
              (app/app-main (fn [code]
                              (println "Exited with code " code))
-                           "-p" (str port)
-                           "-z" zk))))
+                           ["-p" (str port)
+                            "-z" zk]))))
 
 (deftest test-app
   (testing "App starts and can be written to"
