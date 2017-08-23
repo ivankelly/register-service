@@ -16,7 +16,10 @@
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 1024 % 0x10000) "Must be a number between 1024 and 65536"]]
    ["-z" "--zookeeper ZOOKEEPER" "ZooKeeper connect string"
-    :default "localhost:2181"]])
+    :default "localhost:2181"]
+   ["-t" "--zookeeper-timeout-ms TIMEOUT" "ZooKeeper session timeout"
+    :parse-fn #(Integer/parseInt %)
+    :default 5000]])
 
 (defn local-ip []
   (let [socket (DatagramSocket.)]
@@ -35,7 +38,9 @@
   (let [opts (parse-opts args cli-options)
         connect-string (get-in opts [:options :zookeeper])
         zk (zk/connect connect-string
-                       :watcher shutdown-watcher)
+                       :timeout-msec (get-in opts [:options
+                                                   :zookeeper-timeout-ms])
+                       :watcher (shutdown-watcher exit-fn))
         bk (bk/bookkeeper {:zookeeper/connect connect-string})
         error-handler (fn [e]
                         (println "Error in store, quitting. " e)
