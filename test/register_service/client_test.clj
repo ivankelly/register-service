@@ -13,7 +13,7 @@
 
 (def ^:dynamic *jetty-port* nil)
 
-(def trigger-timeout-value 1234)
+(def trigger-timeout-seq 1234)
 
 (defn- timeout-or-error [should-timeout]
   (if (not should-timeout)
@@ -28,7 +28,7 @@
     (routes
      (POST "/register" request
            (let [seqno (long (get-in request [:body :seq]))]
-             (if (= seqno trigger-timeout-value)
+             (if (= seqno trigger-timeout-seq)
                (swap! should-timeout (fn [x] true))))
            (timeout-or-error @should-timeout))
      (GET "/register" []
@@ -55,9 +55,9 @@
     (let [url (resource-url (local-ip) *jetty-port*)]
       (let [response (client/get-value url 0)]
         (is (f/failed? response)))
-      (let [response (client/check-and-set! url 0 100)]
+      (let [response (client/set-value! url 100 0)]
         (is (f/failed? response)))
-      (let [response (client/check-and-set! url trigger-timeout-value 100)]
+      (let [response (client/set-value! url 100 trigger-timeout-seq)]
         (is (f/failed? response)))
       (let [response (client/get-value url 0)]
         (is (f/failed? response))))))

@@ -19,8 +19,8 @@
         store (reify st/Store
                 (become-leader! [this]
                   (st/become-leader! backend))
-                (check-and-set! [this expected new]
-                  (st/check-and-set! backend expected new))
+                (set-value! [this new expected]
+                  (st/set-value! backend new expected))
                 (get-value [this]
                   (st/get-value backend))
                 (close! [this]
@@ -64,7 +64,7 @@
           server0 (:url (nth *servers* 0))
           server1 (:url (nth *servers* 1))
           seqno (:seq (client/get-value server0 0))
-          set-s0-response (client/check-and-set! server0 seqno new-val)
+          set-s0-response (client/set-value! server0 new-val seqno)
           get-s1-response (:value (client/get-value server1 0))]
       (is (not (f/failed? set-s0-response)))
       (is (not (f/failed? get-s1-response)))
@@ -77,7 +77,7 @@
           server0 (:url (nth *servers* 0))
           server1 (:url (nth *servers* 1))
           seqno (:seq (client/get-value server0 0))
-          set-s1-response (client/check-and-set! server1 seqno new-val)
+          set-s1-response (client/set-value! server1 new-val seqno)
           get-s0-response (:value (client/get-value server0 0))]
       (is (not (f/failed? set-s1-response)))
       (is (not (f/failed? get-s0-response)))
@@ -93,7 +93,7 @@
           lease0 (:lease (nth *servers* 0))
           lease1 (:lease (nth *servers* 1))
           seqno (:seq (client/get-value server0 0))
-          set-s0-response (client/check-and-set! server0 seqno new-val)
+          set-s0-response (client/set-value! server0 new-val seqno)
           get-s0-response (client/get-value server0 0)]
       (is (leadership/am-leader? lease0))
       (is (not (leadership/am-leader? lease1)))

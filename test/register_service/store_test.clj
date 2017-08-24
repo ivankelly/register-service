@@ -16,9 +16,9 @@
                                              (fn [e] (println "Got error " e)))]
       @(store/become-leader! store)
       (is (= @(store/get-value store) {:seq 0 :value 0}))
-      (is (= @(store/check-and-set! store 0 100) true))
-      (is (= @(store/check-and-set! store 0 200) false))
-      (is (= @(store/check-and-set! store 1 200) true))
+      (is (= @(store/set-value! store 100 0) true))
+      (is (= @(store/set-value! store 200 0) false))
+      (is (= @(store/set-value! store 200 1) true))
       (store/close! store))))
 
 (deftest test-store-read-write
@@ -79,8 +79,8 @@
           handler (fn [e] (swap! triggered (fn [x] true)))
           store (store/init-persistent-store zk bk handler)]
       @(store/become-leader! store)
-      (is (= @(store/check-and-set! store 0 1) true))
+      (is (= @(store/set-value! store 1 0) true))
       (util/kill-bookies)
       (is (not @triggered))
-      (store/check-and-set! store 1 2)
+      (store/set-value! store 2 1)
       (is (eventually @triggered)))))

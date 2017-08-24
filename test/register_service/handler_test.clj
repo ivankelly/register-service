@@ -28,10 +28,22 @@
     (let [url (resource-url (local-ip) *jetty-port*)]
       (let [response (client/get-value url 0)]
         (is (= response {:seq 0 :value 0})))
-      (let [response (client/check-and-set! url 0 100)]
+      (let [response (client/set-value! url 100 0)]
         (is response))
-      (let [response (client/check-and-set! url 0 100)]
+      (let [response (client/set-value! url 100 0)]
         (is (not response))))))
+
+(deftest test-set-without-seq
+  (testing "Set without sequence numbers"
+    (let [url (resource-url (local-ip) *jetty-port*)
+          set-response-1 (client/set-value! url 1234)
+          get-response-1 (client/get-value url 0)
+          set-response-2 (client/set-value! url 4321)
+          get-response-2 (client/get-value url 0)]
+      (is (= set-response-1 true))
+      (is (= (:value get-response-1) 1234))
+      (is (= set-response-2 true))
+      (is (= (:value get-response-2) 4321)))))
 
 (deftest test-get-newer-seq
   (testing "Get value with a sequence higher than exists on the server"

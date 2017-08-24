@@ -28,7 +28,7 @@
       (.start server1)
       (.start server2)
       (is (eventually (= (:value (client/get-value url1 0)) 0)))
-      (is (client/check-and-set! url1 0 10))
+      (is (client/set-value! url1 10 0))
       (is (= (:value (client/get-value url2 0)) 10))
       (.interrupt server1)
       (.interrupt server2)

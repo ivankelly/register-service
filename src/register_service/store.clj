@@ -8,7 +8,7 @@
 
 (defprotocol Store
   (become-leader! [this])
-  (check-and-set! [this seqno value])
+  (set-value! [this value seqno])
   (get-value [this])
   (close! [this]))
 
@@ -18,11 +18,11 @@
     (reify Store
       (become-leader! [this]
         (d/success-deferred initial-value))
-      (check-and-set! [this seqno value]
+      (set-value! [this value seqno]
         (d/success-deferred
          (let [cur @register
                cur-seqno (:seq cur)]
-           (if (= cur-seqno seqno)
+           (if (or (nil? seqno) (= cur-seqno seqno))
              (compare-and-set! register cur {:seq (inc cur-seqno)
                                              :value value})
              false))))
@@ -107,22 +107,22 @@
   [ledger register-value fatal-error-handler]
   (fn [cmd]
     (case (:action cmd)
-      :check-and-set (let [deferred (:deferred cmd)
-                           cur-seqno (:seq register-value)
-                           seqno (:seq cmd)
-                           update {:seq (inc cur-seqno)
-                                   :value (:value cmd)}]
-                       (if (= cur-seqno seqno)
-                         (try
-                           @(write-update ledger update)
-                           (d/success! deferred true)
-                           (leading-state ledger update fatal-error-handler)
-                           (catch Exception e
-                             (fatal-error-handler e)))
-                         (do
-                           (d/success! deferred false)
-                           (leading-state ledger register-value
-                                          fatal-error-handler))))
+      :set (let [deferred (:deferred cmd)
+                 cur-seqno (:seq register-value)
+                 seqno (:seq cmd)
+                 update {:seq (inc cur-seqno)
+                         :value (:value cmd)}]
+             (if (or (nil? seqno) (= cur-seqno seqno))
+               (try
+                 @(write-update ledger update)
+                 (d/success! deferred true)
+                 (leading-state ledger update fatal-error-handler)
+                 (catch Exception e
+                   (fatal-error-handler e)))
+               (do
+                 (d/success! deferred false)
+                 (leading-state ledger register-value
+                                fatal-error-handler))))
       :get (do
              (d/success! (:deferred cmd) register-value)
              (leading-state ledger register-value
@@ -159,9 +159,9 @@
         (let [deferred (d/deferred)]
           (>!! chan {:action :become-leader :deferred deferred})
           deferred))
-      (check-and-set! [this seqno value]
+      (set-value! [this value seqno]
         (let [deferred (d/deferred)]
-          (>!! chan {:action :check-and-set
+          (>!! chan {:action :set
                      :seq seqno
                      :value value
                      :deferred deferred})

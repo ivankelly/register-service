@@ -18,14 +18,14 @@
 (def timeout-ms 5000)
 
 (defn- remote-or-local-cas!
-  [chan lease-atom seqno value]
+  [chan lease-atom value seqno]
   (if (lead/am-leader? @lease-atom)
     (do
-      (deref (store/check-and-set! chan seqno value)
+      (deref (store/set-value! chan value seqno)
              timeout-ms (f/fail :timeout)))
     (let [remote-url (lead/leader-data @lease-atom)]
       (if remote-url
-        (client/check-and-set! remote-url seqno value)
+        (client/set-value! remote-url value seqno)
         (f/fail :no-leader)))))
 
 (defn- remote-or-local-get
@@ -44,7 +44,7 @@
    (POST "/register" request
          (let [seqno (get-in request [:body :seq])
                value (get-in request [:body :value])
-               result (remote-or-local-cas! chan lease-atom seqno value)]
+               result (remote-or-local-cas! chan lease-atom value seqno)]
            (if (f/failed? result)
              (status (response (str "Failed with: " (f/message result))) 503)
              (response {:updated result}))))
