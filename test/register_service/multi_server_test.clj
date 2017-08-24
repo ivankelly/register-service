@@ -65,9 +65,9 @@
     (let [new-val 1234
           server0 (:url (nth *servers* 0))
           server1 (:url (nth *servers* 1))
-          seqno (:seq (client/get-value server0 0))
-          set-s0-response (client/set-value! server0 new-val seqno)
-          get-s1-response (:value (client/get-value server1 0))]
+          seqno (:seq (client/get-value server0))
+          set-s0-response (client/set-value! server0 new-val :seq-no seqno)
+          get-s1-response (:value (client/get-value server1))]
       (is (not (f/failed? set-s0-response)))
       (is (not (f/failed? get-s1-response)))
       (is (= set-s0-response true))
@@ -78,9 +78,9 @@
     (let [new-val 5678
           server0 (:url (nth *servers* 0))
           server1 (:url (nth *servers* 1))
-          seqno (:seq (client/get-value server0 0))
-          set-s1-response (client/set-value! server1 new-val seqno)
-          get-s0-response (:value (client/get-value server0 0))]
+          seqno (:seq (client/get-value server0))
+          set-s1-response (client/set-value! server1 new-val :seq-no seqno)
+          get-s0-response (:value (client/get-value server0))]
       (is (not (f/failed? set-s1-response)))
       (is (not (f/failed? get-s0-response)))
       (is (= set-s1-response true))
@@ -94,9 +94,9 @@
           zk0 (:zk (nth *servers* 0))
           lease0 (:lease (nth *servers* 0))
           lease1 (:lease (nth *servers* 1))
-          seqno (:seq (client/get-value server0 0))
-          set-s0-response (client/set-value! server0 new-val seqno)
-          get-s0-response (client/get-value server0 0)]
+          seqno (:seq (client/get-value server0))
+          set-s0-response (client/set-value! server0 new-val :seq-no seqno)
+          get-s0-response (client/get-value server0)]
       (is (leadership/am-leader? lease0))
       (is (not (leadership/am-leader? lease1)))
       (is (not (f/failed? set-s0-response)))
@@ -105,7 +105,7 @@
       (is (= (:value get-s0-response) new-val))
       (leadership/leave-group zk0 lease0)
       (is (eventually (leadership/am-leader? lease1)))
-      (is (= (client/get-value server0 0) get-s0-response)))))
+      (is (= (client/get-value server0) get-s0-response)))))
 
 (deftest test-dead-leader
   (testing "Testing access via non-leader with leader unresponsive"

@@ -25,7 +25,8 @@
              timeout-ms (f/fail :timeout)))
     (let [remote-url (lead/leader-data @lease-atom)]
       (if remote-url
-        (client/set-value! remote-url value seqno)
+        (apply client/set-value! (concat [remote-url value]
+                                         (if seqno [:seq-no seqno])))
         (f/fail :no-leader)))))
 
 (defn- remote-or-local-get
@@ -35,7 +36,7 @@
            timeout-ms (f/fail :timeout))
     (let [remote-url (lead/leader-data @lease-atom)]
       (if remote-url
-        (client/get-value remote-url 0) ; client will handle if too old
+        (client/get-value remote-url) ; client will handle if too old
         (f/fail :no-leader)))))
 
 (defn- create-routes

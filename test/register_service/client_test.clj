@@ -53,12 +53,12 @@
 (deftest test-get-and-set-errors
   (testing "Get and set operation errors"
     (let [url (resource-url (local-ip) *jetty-port*)]
-      (let [response (client/get-value url 0)]
+      (let [response (client/get-value url)]
         (is (f/failed? response)))
-      (let [response (client/set-value! url 100 0)]
+      (let [response (client/set-value! url 100 :seq-no 0)]
         (is (f/failed? response)))
-      (let [response (client/set-value! url 100 trigger-timeout-seq)]
+      (let [response (client/set-value! url 100 :seq-no trigger-timeout-seq)]
         (is (f/failed? response)))
-      (let [response (client/get-value url 0)]
+      (let [response (client/get-value url)]
         (is (f/failed? response))))))
 
