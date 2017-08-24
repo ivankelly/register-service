@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [register-service.app :as app]
             [clj-async-test.core :refer :all]
+            [clojure.tools.logging :as log]
             [register-service.client :as client]
             [register-service.handler :as handler]
             [register-service.util :as util]
@@ -13,7 +14,7 @@
 (defn server-thread [port zk]
   (Thread. (fn []
              (app/app-main (fn [code]
-                             (println "Exited with code " code))
+                             (log/debug "Exited with code " code))
                            ["-p" (str port)
                             "-z" zk]))))
 

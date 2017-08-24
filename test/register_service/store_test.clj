@@ -1,6 +1,7 @@
 (ns register-service.store-test
   (:require [clojure.test :refer :all]
             [clj-async-test.core :refer :all]
+            [clojure.tools.logging :as log]
             [register-service.store :as store]
             [register-service.util :as util]
             [bookkeeper.client :as bk])
@@ -13,7 +14,7 @@
     (let [zk (util/zk-client)
           bk (util/bk-client)
           store (store/init-persistent-store zk bk
-                                             (fn [e] (println "Got error " e)))]
+                                             (fn [e] (log/debug "Got error " e)))]
       @(store/become-leader! store)
       (is (= @(store/get-value store) {:seq 0 :value 0}))
       (is (= @(store/set-value! store 100 0) true))

@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [failjure.core :as f]
             [ring.adapter.jetty :refer [run-jetty]]
+            [clojure.tools.logging :as log]
             [register-service.client :as client]
             [register-service.handler :refer [create-handler, resource-url]]
             [register-service.leadership :as leadership]
@@ -15,7 +16,8 @@
 
 (defn hangable-store [zk bk]
   (let [should-hang? (atom false)
-        backend (st/init-persistent-store zk bk (fn [e] (println "Got error " e)))
+        backend (st/init-persistent-store zk bk
+                                          (fn [e] (log/debug "Got error " e)))
         store (reify st/Store
                 (become-leader! [this]
                   (st/become-leader! backend))
@@ -38,7 +40,7 @@
         url (resource-url (local-ip) http-port)
         lease (leadership/join-group zk url
                                      (fn [] (st/become-leader! store))
-                                     (fn [] (println "leadership lost")))]
+                                     (fn [] (log/debug "leadership lost")))]
     (swap! lease-atom (fn [x] lease))
     {:http-port http-port
      :url url

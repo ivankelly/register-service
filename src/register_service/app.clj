@@ -4,6 +4,7 @@
             [register-service.leadership :as leadership]
             [register-service.store :as st]
             [clojure.core.async :refer [>!!]]
+            [clojure.tools.logging :as log]
             [clojure.tools.cli :refer [parse-opts]]
             [bookkeeper.client :as bk]
             [zookeeper :as zk])
@@ -30,7 +31,7 @@
   (fn [{:keys [keeper-state]}]
     (if (= keeper-state :Expired)
       (do
-        (println "Zookeeper session lost, shutting down")
+        (log/warn "Zookeeper session lost, shutting down")
         (exit-fn 1)))))
 
 (defn app-main
@@ -43,7 +44,7 @@
                        :watcher (shutdown-watcher exit-fn))
         bk (bk/bookkeeper {:zookeeper/connect connect-string})
         error-handler (fn [e]
-                        (println "Error in store, quitting. " e)
+                        (log/warn "Error in store, quitting. " e)
                         (exit-fn 2))
         store (st/init-persistent-store zk bk error-handler)
         port (get-in opts [:options :port])
@@ -51,13 +52,13 @@
         lease (leadership/join-group zk url
                                      (fn [] (st/become-leader! store))
                                      (fn []
-                                       (println "Lost leadership, quitting")
+                                       (log/warn "Lost leadership, quitting")
                                        (exit-fn 4)))]
     (try
       (run-jetty (create-handler store (atom lease))
                  {:port port})
       (catch Exception e
-        (println "Caught exception " e)
+        (log/error "Caught exception " e)
         (exit-fn 3)))))
 
 (defn -main
