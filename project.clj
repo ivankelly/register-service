@@ -1,4 +1,4 @@
-(defproject register-service "0.2.0"
+(defproject register-service "0.2.1-SNAPSHOT"
   :description "A simple service that exposes a single register backed by bookkeeper"
   :url "http://github.com/ivankelly/register-service"
   :min-lein-version "2.0.0"
