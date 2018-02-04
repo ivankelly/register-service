@@ -14,21 +14,25 @@
   (close! [this]))
 
 (defn init-mem-store
-  [initial-value]
-  (let [register (atom initial-value)]
+  []
+  (let [registers (atom {})]
     (reify Store
       (become-leader! [this]
-        (d/success-deferred initial-value))
+        (d/success-deferred @registers))
       (set-value! [this k v seqno]
         (d/success-deferred
-         (let [cur @register
-               cur-seqno (:seq cur)]
+         (let [current @registers
+               cur-cell (or (get current k) {:seq 0 :value 0})
+               cur-seqno (:seq cur-cell)]
            (if (or (nil? seqno) (= cur-seqno seqno))
-             (compare-and-set! register cur {:seq (inc cur-seqno)
-                                             :value v})
+             (compare-and-set! registers
+                               current
+                               (assoc current k {:seq (inc cur-seqno)
+                                                 :value v}))
              false))))
       (get-value [this k]
-        (d/success-deferred @register))
+        (let [cur-cell (get @registers k)]
+          (d/success-deferred (or cur-cell {:seq 0 :value 0}))))
       (close! [this]))))
 
 (def register-znode "/registerdata")

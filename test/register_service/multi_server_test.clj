@@ -4,7 +4,7 @@
             [ring.adapter.jetty :refer [run-jetty]]
             [clojure.tools.logging :as log]
             [register-service.client :as client]
-            [register-service.handler :refer [create-handler, resource-url]]
+            [register-service.handler :refer [create-handler, key-url, resource-url]]
             [register-service.leadership :as leadership]
             [register-service.store :as st]
             [register-service.util :as util]
@@ -21,10 +21,10 @@
         store (reify st/Store
                 (become-leader! [this]
                   (st/become-leader! backend))
-                (set-value! [this new expected]
-                  (st/set-value! backend new expected))
-                (get-value [this]
-                  (st/get-value backend))
+                (set-value! [this k v expected]
+                  (st/set-value! backend k v expected))
+                (get-value [this k]
+                  (st/get-value backend k))
                 (close! [this]
                   (st/close! backend)))]
     [should-hang? store]))
@@ -65,9 +65,10 @@
     (let [new-val 1234
           server0 (:url (nth *servers* 0))
           server1 (:url (nth *servers* 1))
-          seqno (:seq (client/get-value server0))
-          set-s0-response (client/set-value! server0 new-val :seq-no seqno)
-          get-s1-response (:value (client/get-value server1))]
+          seqno (:seq (client/get-value (key-url server0 "key1")))
+          set-s0-response (client/set-value! (key-url server0 "key1")
+                                             new-val :seq-no seqno)
+          get-s1-response (:value (client/get-value (key-url server1 "key1")))]
       (is (not (f/failed? set-s0-response)))
       (is (not (f/failed? get-s1-response)))
       (is (= set-s0-response true))
@@ -78,9 +79,10 @@
     (let [new-val 5678
           server0 (:url (nth *servers* 0))
           server1 (:url (nth *servers* 1))
-          seqno (:seq (client/get-value server0))
-          set-s1-response (client/set-value! server1 new-val :seq-no seqno)
-          get-s0-response (:value (client/get-value server0))]
+          seqno (:seq (client/get-value (key-url server0 "key1")))
+          set-s1-response (client/set-value! (key-url server1 "key1")
+                                             new-val :seq-no seqno)
+          get-s0-response (:value (client/get-value (key-url server0 "key1")))]
       (is (not (f/failed? set-s1-response)))
       (is (not (f/failed? get-s0-response)))
       (is (= set-s1-response true))
@@ -94,9 +96,10 @@
           zk0 (:zk (nth *servers* 0))
           lease0 (:lease (nth *servers* 0))
           lease1 (:lease (nth *servers* 1))
-          seqno (:seq (client/get-value server0))
-          set-s0-response (client/set-value! server0 new-val :seq-no seqno)
-          get-s0-response (client/get-value server0)]
+          seqno (:seq (client/get-value (key-url server0 "key1")))
+          set-s0-response (client/set-value! (key-url server0 "key1")
+                                             new-val :seq-no seqno)
+          get-s0-response (client/get-value (key-url server0 "key1"))]
       (is (leadership/am-leader? lease0))
       (is (not (leadership/am-leader? lease1)))
       (is (not (f/failed? set-s0-response)))
@@ -105,7 +108,7 @@
       (is (= (:value get-s0-response) new-val))
       (leadership/leave-group zk0 lease0)
       (is (eventually (leadership/am-leader? lease1)))
-      (is (= (client/get-value server0) get-s0-response)))))
+      (is (= (client/get-value (key-url server0 "key1")) get-s0-response)))))
 
 (deftest test-dead-leader
   (testing "Testing access via non-leader with leader unresponsive"

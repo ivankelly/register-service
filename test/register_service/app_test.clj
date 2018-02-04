@@ -22,12 +22,13 @@
   (testing "App starts and can be written to"
     (let [port1 3111
           port2 3112
-          url1 (handler/resource-url (app/local-ip) port1)
-          url2 (handler/resource-url (app/local-ip) port2)
+          url1 (handler/resource-url (app/local-ip) port1 "key1")
+          url2 (handler/resource-url (app/local-ip) port2 "key1")
           server1 (server-thread port1 util/*zkconnect*)
           server2 (server-thread port2 util/*zkconnect*)]
       (.start server1)
       (.start server2)
+      (is (eventually (= (:value (client/get-value url1)) 0)))
       (is (eventually (= (:value (client/get-value url1)) 0)))
       (is (client/set-value! url1 10))
       (is (= (:value (client/get-value url2)) 10))
