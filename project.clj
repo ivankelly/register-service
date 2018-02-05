@@ -1,4 +1,4 @@
-(defproject register-service "0.2.1-SNAPSHOT"
+(defproject register-service "0.2.1"
   :description "A simple service that exposes a single register backed by bookkeeper"
   :url "http://github.com/ivankelly/register-service"
   :license {:name "Apache License, Version 2.0"
