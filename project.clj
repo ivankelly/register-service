@@ -1,6 +1,8 @@
 (defproject register-service "0.2.1-SNAPSHOT"
   :description "A simple service that exposes a single register backed by bookkeeper"
   :url "http://github.com/ivankelly/register-service"
+  :license {:name "Apache License, Version 2.0"
+            :url "https://www.apache.org/licenses/LICENSE-2.0"}
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/core.async "0.3.443"]
@@ -18,6 +20,7 @@
   :plugins [[lein-ring "0.9.7"]]
   :main register-service.app
   :ring {:handler register-service.handler/app}
+  :deploy-repositories [["releases" :clojars]]
   :profiles
   {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
                         [ring/ring-mock "0.3.0"]]}})
